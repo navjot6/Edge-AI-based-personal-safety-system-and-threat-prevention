@@ -1,0 +1,7 @@
+flask
+opencv-python
+mediapipe
+numpy
+mysql-connector-python
+twilio
+gunicorn
