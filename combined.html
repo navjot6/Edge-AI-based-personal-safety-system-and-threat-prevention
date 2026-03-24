@@ -1,0 +1,2852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edge-AI Safety System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #060912;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.08);
+      --border-bright: rgba(255,255,255,0.15);
+      --text: #e2e8f0;
+      --muted: #475569;
+      --muted2: #64748b;
+      --green: #22c55e;
+      --green-glow: rgba(34,197,94,0.3);
+      --green-dim: rgba(34,197,94,0.12);
+      --red: #ef4444;
+      --red-glow: rgba(239,68,68,0.3);
+      --red-dim: rgba(239,68,68,0.12);
+      --yellow: #f59e0b;
+      --yellow-dim: rgba(245,158,11,0.12);
+      --blue: #3b82f6;
+      --blue-dim: rgba(59,130,246,0.12);
+      --cyan: #06b6d4;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(34,197,94,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59,130,246,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 60% 40%, rgba(239,68,68,0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ====== NAVBAR ====== */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: rgba(6,9,18,0.90);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--green), #16a34a);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--green-glow);
+    }
+
+    .nav-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .nav-subtitle {
+      font-size: 11px;
+      color: var(--muted2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .nav-center {
+      display: flex;
+      gap: 6px;
+      background: rgba(255,255,255,0.04);
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted2);
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .nav-tab:hover { color: var(--text); background: var(--surface-hover); }
+
+    .nav-tab.active {
+      background: linear-gradient(135deg, var(--green), #16a34a);
+      color: white;
+      box-shadow: 0 2px 12px var(--green-glow);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-time {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--muted2);
+    }
+
+    .nav-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ====== PAGE SWITCHING ====== */
+    .page {
+      display: none;
+      position: relative;
+      z-index: 1;
+      animation: pageIn 0.35s ease both;
+    }
+
+    .page.active { display: block; }
+
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ====== WRAPPER ====== */
+    .wrapper {
+      padding: 28px 32px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ====== BUTTONS ====== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 4px 20px var(--green-glow);
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px var(--green-glow); }
+
+    .btn-stop {
+      background: var(--surface-hover);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+
+    .btn-stop:hover { background: var(--red-dim); transform: translateY(-2px); }
+
+    .btn-handle {
+      background: var(--blue-dim);
+      color: var(--blue);
+      border: 1px solid rgba(59,130,246,0.25);
+    }
+
+    .btn-handle:hover { background: rgba(59,130,246,0.2); transform: translateY(-2px); }
+
+    /* ====== CARD ====== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s;
+    }
+
+    .card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+
+    /* ====== DASHBOARD PAGE ====== */
+
+    .control-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 24px;
+      margin-bottom: 24px;
+    }
+
+    .control-left { display: flex; align-items: center; gap: 12px; }
+    .control-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--green-dim);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 30px;
+    }
+
+    .system-status.danger { background: var(--red-dim); border-color: rgba(239,68,68,0.2); }
+    .system-status span { font-size: 12px; font-weight: 600; color: var(--green); }
+    .system-status.danger span { color: var(--red); }
+
+    .control-buttons { display: flex; gap: 10px; }
+
+    .grid-top {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1fr 1fr 380px;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted2); margin-bottom: 10px; }
+    .card-value { font-family: 'Space Mono', monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+    .card-sub { font-size: 12px; color: var(--muted2); margin-top: 6px; }
+
+    .card-alert { border-top: 2px solid var(--red); }
+    .card-risk { border-top: 2px solid var(--yellow); }
+    .card-score { border-top: 2px solid var(--blue); }
+    .card-location { border-top: 2px solid var(--cyan); }
+
+    .val-red { color: var(--red); }
+    .val-yellow { color: var(--yellow); }
+    .val-blue { color: var(--blue); }
+    .val-cyan { color: var(--cyan); }
+    .val-green { color: var(--green); }
+
+    /* CAMERA */
+    .camera-card { position: relative; padding: 0; overflow: hidden; border-radius: 18px; }
+    .camera-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .camera-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .rec-dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; box-shadow: 0 0 8px var(--red); animation: pulse 1s infinite; }
+
+    .camera-feed {
+      position: relative;
+      background: #000;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(34,197,94,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,197,94,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .corner { position: absolute; width: 20px; height: 20px; border-color: var(--green); border-style: solid; opacity: 0.7; }
+    .corner-tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+    .corner-tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+    .corner-br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+    .no-feed { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--muted); }
+    .no-feed-icon { font-size: 48px; opacity: 0.3; }
+    .no-feed-text { font-size: 13px; font-family: 'Space Mono', monospace; }
+
+    .camera-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted2); }
+    .camera-tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .tag-live { background: var(--red-dim); color: var(--red); }
+    .tag-active { background: var(--green-dim); color: var(--green); }
+
+    /* DETECTION */
+    .detection-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .detection-title { font-size: 14px; font-weight: 600; }
+    .ai-badge { font-size: 10px; font-family: 'Space Mono', monospace; padding: 3px 10px; background: var(--green-dim); color: var(--green); border-radius: 20px; border: 1px solid rgba(34,197,94,0.2); }
+    .detection-metrics { display: flex; flex-direction: column; gap: 14px; }
+    .metric-row { display: flex; flex-direction: column; gap: 6px; }
+    .metric-label { display: flex; justify-content: space-between; font-size: 12px; }
+    .metric-name { color: var(--muted2); }
+    .metric-val { font-family: 'Space Mono', monospace; font-size: 12px; }
+    .bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 10px; transition: width 1s ease; }
+    .bar-red { background: linear-gradient(90deg, var(--red), #fca5a5); }
+    .bar-yellow { background: linear-gradient(90deg, var(--yellow), #fcd34d); }
+    .bar-green { background: linear-gradient(90deg, var(--green), #86efac); }
+    .bar-blue { background: linear-gradient(90deg, var(--blue), #93c5fd); }
+
+    /* FAMILY PROFILES IN DASHBOARD */
+    .profiles-grid { display: flex; flex-direction: column; gap: 12px; }
+
+    .profile-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .profile-card:hover { background: var(--surface-hover); border-color: var(--border-bright); }
+
+    .profile-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+
+    .profile-info { flex: 1; }
+    .profile-name { font-size: 13px; font-weight: 600; }
+    .profile-role { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+    .profile-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+    .profile-status { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+    .status-safe { background: var(--green-dim); color: var(--green); }
+    .status-alert { background: var(--red-dim); color: var(--red); animation: blink 1s infinite; }
+    .status-away { background: rgba(100,116,139,0.15); color: var(--muted2); }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .profile-time { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--muted); }
+
+    /* ALERTS TABLE */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .section-count { font-size: 11px; padding: 2px 9px; background: var(--red-dim); color: var(--red); border-radius: 20px; font-weight: 600; }
+    .section-count.green-count { background: var(--green-dim); color: var(--green); }
+
+    .view-all { font-size: 12px; color: var(--muted2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; background: none; border: none; font-family: 'DM Sans', sans-serif; }
+    .view-all:hover { color: var(--text); }
+
+    .alert-table { width: 100%; border-collapse: collapse; }
+    .alert-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .alert-table td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .alert-table tr:last-child td { border-bottom: none; }
+    .alert-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .risk-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; font-family: 'Space Mono', monospace; }
+    .risk-high { background: var(--red-dim); color: var(--red); }
+    .risk-medium { background: var(--yellow-dim); color: var(--yellow); }
+    .risk-low { background: var(--green-dim); color: var(--green); }
+
+    /* SNAPSHOTS */
+    .snapshots-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    .snapshot-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .snapshot-item:hover { border-color: var(--border-bright); transform: scale(1.03); }
+
+    .snapshot-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+    .snap-icon { font-size: 24px; opacity: 0.3; }
+    .snap-time { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--muted); }
+
+    .snapshot-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; opacity: 0; transition: opacity 0.2s; }
+    .snapshot-item:hover .snapshot-overlay { opacity: 1; }
+    .snap-label { font-size: 11px; color: white; font-weight: 600; }
+    .snap-sub { font-size: 10px; color: rgba(255,255,255,0.6); }
+    .snap-badge { position: absolute; top: 8px; right: 8px; padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 700; font-family: 'Space Mono', monospace; }
+
+    /* SYSTEM STATUS */
+    .system-checks { display: flex; flex-direction: column; gap: 12px; }
+    .check-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border); }
+    .check-left { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .check-icon { font-size: 16px; }
+    .check-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .check-ok { background: var(--green-dim); color: var(--green); }
+    .check-warn { background: var(--yellow-dim); color: var(--yellow); }
+
+    /* ====== MEMBERS PAGE ====== */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .page-title { font-size: 24px; font-weight: 700; }
+    .page-sub { font-size: 13px; color: var(--muted2); margin-top: 4px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+
+    .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .stat-val { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; }
+    .stat-lbl { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+
+    .members-main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+
+    .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+    .member-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: all 0.3s;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .member-card:hover { border-color: var(--border-bright); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+    .member-photo-wrap { position: relative; height: 160px; background: #0d1117; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .member-photo { width: 100%; height: 100%; object-fit: cover; }
+    .member-avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; background: rgba(255,255,255,0.05); }
+
+    .scan-line { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--green), transparent); animation: scan 2.5s linear infinite; opacity: 0.6; }
+    @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+    .member-status-badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; font-family: 'Space Mono', monospace; }
+
+    .member-body { padding: 16px; }
+    .member-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+
+    .member-role-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+    .role-elder { background: rgba(245,158,11,0.12); color: var(--yellow); }
+    .role-child { background: rgba(59,130,246,0.12); color: var(--blue); }
+    .role-nanny { background: rgba(167,139,250,0.12); color: #a78bfa; }
+    .role-other { background: rgba(6,182,212,0.12); color: var(--cyan); }
+
+    .member-meta { display: flex; flex-direction: column; gap: 7px; }
+    .meta-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted2); }
+    .meta-icon { font-size: 13px; }
+    .meta-val { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text); }
+
+    .member-footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .btn-sm { flex: 1; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-sm-edit { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+    .btn-sm-edit:hover { background: rgba(59,130,246,0.2); }
+    .btn-sm-delete { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-sm-delete:hover { background: rgba(239,68,68,0.2); }
+
+    /* FORM */
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px; position: sticky; top: 90px; }
+    .form-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .form-sub { font-size: 12px; color: var(--muted2); margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; display: block; }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus { border-color: var(--green); background: rgba(34,197,94,0.04); box-shadow: 0 0 0 3px rgba(34,197,94,0.1); }
+    select.form-input option { background: #0d1523; color: var(--text); }
+
+    .upload-zone {
+      width: 100%;
+      height: 140px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .upload-zone:hover { border-color: var(--green); background: var(--green-dim); }
+    .upload-zone.has-image { border-style: solid; border-color: var(--green); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-preview { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; border-radius: 10px; }
+    .upload-icon { font-size: 28px; opacity: 0.4; }
+    .upload-text { font-size: 12px; color: var(--muted2); }
+    .upload-hint { font-size: 11px; color: var(--muted); }
+
+    .form-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    .ai-info-box { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+    .ai-info-title { font-size: 12px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+    .ai-info-text { font-size: 11px; color: rgba(34,197,94,0.7); line-height: 1.5; }
+
+    .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted2); gap: 12px; }
+    .empty-icon { font-size: 48px; opacity: 0.3; }
+    .empty-text { font-size: 15px; font-weight: 600; }
+    .empty-sub { font-size: 13px; color: var(--muted); }
+
+    /* ====== MODAL ====== */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+
+    .modal { background: #0d1523; border: 1px solid var(--border-bright); border-radius: 20px; padding: 28px; max-width: 440px; width: 90%; animation: slideUp 0.3s ease; }
+    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+    .btn-confirm { flex: 1; background: linear-gradient(135deg, var(--green), #16a34a); color: white; padding: 12px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; }
+    .btn-cancel { flex: 1; background: var(--surface-hover); color: var(--muted2); padding: 12px; border-radius: 10px; border: 1px solid var(--border); font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; }
+
+    /* ====== TOAST ====== */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+
+    .toast { background: #0d1523; border: 1px solid var(--border-bright); border-radius: 12px; padding: 14px 18px; min-width: 280px; display: flex; align-items: center; gap: 10px; font-size: 13px; animation: slideIn 0.3s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast.fadeOut { animation: fadeOut 0.4s forwards; }
+    @keyframes fadeOut { to { transform: translateX(40px); opacity: 0; } }
+    .toast-icon { font-size: 18px; }
+    .toast-text { flex: 1; }
+    .toast-title { font-weight: 600; }
+    .toast-sub { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+
+    /* ====== THREAT ALERT MODAL ====== */
+    .threat-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .threat-modal-overlay.open { display: flex; }
+
+    .threat-modal {
+      background: #0d1117;
+      border: 2px solid var(--red);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 520px;
+      width: 92%;
+      box-shadow: 0 0 60px rgba(239,68,68,0.4), 0 0 120px rgba(239,68,68,0.15);
+      animation: threatPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .threat-modal::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(239,68,68,0.03) 10px,
+        rgba(239,68,68,0.03) 20px
+      );
+      pointer-events: none;
+    }
+
+    @keyframes threatPop {
+      from { transform: scale(0.8) translateY(30px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .threat-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .threat-icon-big {
+      width: 56px;
+      height: 56px;
+      background: var(--red-dim);
+      border: 2px solid var(--red);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+      animation: iconPulse 1s infinite;
+    }
+
+    @keyframes iconPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    }
+
+    .threat-title-text {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--red);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .threat-subtitle {
+      font-size: 13px;
+      color: var(--muted2);
+      margin-top: 3px;
+    }
+
+    .threat-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .threat-info-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .threat-info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .threat-info-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* ALERT CHANNELS */
+    .alert-channels {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .alert-channel-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted2);
+      margin-bottom: 4px;
+    }
+
+    .channel-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      transition: all 0.3s;
+    }
+
+    .channel-row.sent {
+      border-color: rgba(34,197,94,0.3);
+      background: var(--green-dim);
+    }
+
+    .channel-row.sending {
+      border-color: rgba(245,158,11,0.3);
+      background: var(--yellow-dim);
+    }
+
+    .channel-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .channel-icon { font-size: 18px; }
+
+    .channel-status {
+      font-size: 11px;
+      font-family: 'Space Mono', monospace;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    .status-sending { background: var(--yellow-dim); color: var(--yellow); }
+    .status-sent { background: var(--green-dim); color: var(--green); }
+    .status-pending { background: rgba(100,116,139,0.15); color: var(--muted2); }
+
+    /* RELATIVES LIST */
+    .relatives-section {
+      margin-bottom: 20px;
+    }
+
+    .relative-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .relative-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--blue-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .relative-info { flex: 1; }
+    .relative-name { font-weight: 600; font-size: 13px; }
+    .relative-phone { font-size: 11px; color: var(--muted2); font-family: 'Space Mono', monospace; }
+
+    .relative-sent {
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* THREAT ACTIONS */
+    .threat-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-dismiss {
+      flex: 1;
+      background: var(--surface-hover);
+      color: var(--muted2);
+      padding: 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-dismiss:hover { background: rgba(255,255,255,0.08); }
+
+    .btn-send-manual {
+      flex: 2;
+      background: linear-gradient(135deg, var(--red), #b91c1c);
+      color: white;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-send-manual:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(239,68,68,0.5); }
+
+    /* ALERT SENT BANNER */
+    .alert-sent-banner {
+      display: none;
+      background: var(--green-dim);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .alert-sent-banner.show { display: flex; }
+
+    /* FLASHING RED BORDER ANIMATION ON BODY */
+    body.threat-active::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      border: 3px solid var(--red);
+      pointer-events: none;
+      z-index: 499;
+      animation: borderFlash 1s infinite;
+    }
+
+    @keyframes borderFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ====== THREAT ALERT MODAL ====== */
+    .threat-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    .threat-overlay.open { display: flex; }
+
+    .threat-modal {
+      background: #0d1117;
+      border: 2px solid var(--red);
+      border-radius: 24px;
+      padding: 0;
+      max-width: 520px;
+      width: 94%;
+      animation: threatPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(239,68,68,0.3);
+    }
+
+    @keyframes threatPop {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .threat-header {
+      background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05));
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid rgba(239,68,68,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .threat-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        45deg, transparent, transparent 10px,
+        rgba(239,68,68,0.03) 10px, rgba(239,68,68,0.03) 20px
+      );
+    }
+
+    .threat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--red);
+      color: white;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      animation: blink 0.8s infinite;
+    }
+
+    .threat-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 6px;
+    }
+
+    .threat-location {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .threat-body { padding: 24px 28px; }
+
+    .threat-info-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .threat-info-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .threat-info-icon { font-size: 22px; margin-bottom: 6px; }
+    .threat-info-val { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; }
+    .threat-info-lbl { font-size: 11px; color: var(--muted2); margin-top: 3px; }
+
+    /* ALERT CHANNELS */
+    .alert-channels-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted2);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-channels { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+    .alert-channel {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .channel-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .channel-sms .channel-icon { background: rgba(34,197,94,0.15); }
+    .channel-whatsapp .channel-icon { background: rgba(37,211,102,0.15); }
+    .channel-email .channel-icon { background: rgba(59,130,246,0.15); }
+
+    .channel-info { flex: 1; }
+    .channel-name { font-size: 13px; font-weight: 600; }
+    .channel-detail { font-size: 11px; color: var(--muted2); margin-top: 2px; font-family: 'Space Mono', monospace; }
+
+    .channel-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .status-sending {
+      background: var(--yellow-dim);
+      color: var(--yellow);
+      animation: blink 0.6s infinite;
+    }
+
+    .status-sent {
+      background: var(--green-dim);
+      color: var(--green);
+    }
+
+    /* PROGRESS BAR */
+    .send-progress {
+      height: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .send-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), var(--yellow), var(--green));
+      border-radius: 10px;
+      width: 0%;
+      transition: width 3s ease;
+    }
+
+    /* RECIPIENTS LIST */
+    .recipients-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted2);
+      margin-bottom: 10px;
+    }
+
+    .recipients-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .recipient-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+    }
+
+    .recipient-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .threat-footer {
+      display: flex;
+      gap: 10px;
+      padding: 18px 28px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .btn-dismiss {
+      flex: 1;
+      background: var(--surface-hover);
+      color: var(--muted2);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-dismiss:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .btn-resend {
+      flex: 1;
+      background: var(--red-dim);
+      color: var(--red);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(239,68,68,0.3);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-resend:hover { background: rgba(239,68,68,0.2); }
+
+    /* FLASHING RED BORDER ON BODY WHEN ALERT */
+    body.threat-active::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      border: 3px solid var(--red);
+      pointer-events: none;
+      z-index: 400;
+      animation: borderFlash 0.8s infinite;
+    }
+
+    @keyframes borderFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ====== ALERT BUTTON IN NAVBAR ====== */
+    .nav-alert-btn {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--red);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      animation: alertPulse 1s infinite;
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+
+    .nav-alert-btn.visible { display: flex; }
+
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 20px var(--red-glow); transform: scale(1); }
+      50% { box-shadow: 0 0 35px var(--red-glow); transform: scale(1.04); }
+    }
+
+    /* ====== THREAT ALERT MODAL ====== */
+    .threat-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .threat-modal-overlay.open { display: flex; }
+
+    .threat-modal {
+      background: #0d0f1a;
+      border: 2px solid var(--red);
+      border-radius: 24px;
+      padding: 0;
+      max-width: 560px;
+      width: 95%;
+      overflow: hidden;
+      animation: threatSlide 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 0 60px rgba(239,68,68,0.4);
+    }
+
+    @keyframes threatSlide {
+      from { transform: scale(0.8) translateY(-30px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    /* Flashing red top bar */
+    .threat-top-bar {
+      background: var(--red);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: flashBar 1s infinite;
+    }
+
+    @keyframes flashBar {
+      0%, 100% { background: #ef4444; }
+      50% { background: #b91c1c; }
+    }
+
+    .threat-top-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.1em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .threat-top-time {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .threat-body { padding: 24px; }
+
+    /* LOCATION BOX */
+    .threat-location-box {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .threat-location-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .threat-location-info {}
+
+    .threat-location-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--red);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .threat-location-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .threat-location-sub {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 3px;
+    }
+
+    /* PERSON IN DANGER */
+    .threat-person-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .threat-person-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: rgba(239,68,68,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      border: 2px solid rgba(239,68,68,0.3);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .threat-person-avatar img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+
+    .threat-person-info { flex: 1; }
+    .threat-person-name { font-size: 15px; font-weight: 700; }
+    .threat-person-role { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+
+    .threat-risk-badge {
+      padding: 6px 14px;
+      background: var(--red);
+      color: white;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+      animation: alertPulse 1s infinite;
+    }
+
+    /* ALERTS SENT SECTION */
+    .alerts-sent-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted2);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .alerts-sent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .alert-sent-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .alert-sent-card.sent {
+      border-color: rgba(34,197,94,0.3);
+      background: var(--green-dim);
+    }
+
+    .alert-sent-card.sending {
+      border-color: rgba(245,158,11,0.3);
+      background: var(--yellow-dim);
+      animation: sendingPulse 0.8s infinite;
+    }
+
+    @keyframes sendingPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .alert-sent-icon { font-size: 22px; margin-bottom: 6px; }
+    .alert-sent-type { font-size: 11px; font-weight: 700; color: var(--muted2); }
+    .alert-sent-status { font-size: 10px; margin-top: 4px; font-family: 'Space Mono', monospace; }
+    .alert-sent-card.sent .alert-sent-status { color: var(--green); }
+    .alert-sent-card.sending .alert-sent-status { color: var(--yellow); }
+
+    /* RELATIVES NOTIFIED */
+    .relatives-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .relative-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .relative-row.notified {
+      border-color: rgba(34,197,94,0.2);
+      background: var(--green-dim);
+    }
+
+    .relative-left { display: flex; align-items: center; gap: 10px; }
+    .relative-icon { font-size: 16px; }
+    .relative-name { font-weight: 600; font-size: 13px; }
+    .relative-phone { font-size: 11px; color: var(--muted2); font-family: 'Space Mono', monospace; }
+
+    .notified-badge {
+      font-size: 10px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .badge-sent { background: var(--green-dim); color: var(--green); }
+    .badge-pending { background: var(--yellow-dim); color: var(--yellow); }
+
+    /* MODAL FOOTER BUTTONS */
+    .threat-footer {
+      display: flex;
+      gap: 10px;
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .btn-resolve {
+      flex: 1;
+      background: linear-gradient(135deg, var(--green), #16a34a);
+      color: white;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-resolve:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--green-glow); }
+
+    .btn-keep-open {
+      padding: 13px 20px;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted2);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+    }
+
+    .btn-keep-open:hover { background: var(--surface-hover); color: var(--text); }
+
+    /* ====== RESPONSIVE ====== */
+    @media (max-width: 1100px) { .grid-main { grid-template-columns: 1fr 1fr; } .grid-main .card:last-child { grid-column: span 2; } }
+    @media (max-width: 900px) { .members-main-grid { grid-template-columns: 1fr; } .form-card { position: static; } .stats-row { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 768px) { .wrapper { padding: 16px; } .navbar { padding: 12px 16px; } .grid-top { grid-template-columns: repeat(2,1fr); } .grid-main, .grid-bottom { grid-template-columns: 1fr; } .grid-main .card:last-child { grid-column: span 1; } .snapshots-grid { grid-template-columns: repeat(2,1fr); } .control-bar { flex-direction: column; gap: 12px; align-items: flex-start; } .nav-center { display: none; } }
+  </style>
+</head>
+<body>
+
+<!-- ====== NAVBAR ====== -->
+<nav class="navbar">
+  <div class="nav-brand" onclick="switchPage('dashboard')">
+    <div class="nav-logo">🛡</div>
+    <div>
+      <div class="nav-title">EDGE-AI SAFETY SYSTEM</div>
+      <div class="nav-subtitle">Personal Protection & Threat Prevention</div>
+    </div>
+  </div>
+
+  <div class="nav-center">
+    <button class="nav-tab active" id="tab-dashboard" onclick="switchPage('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab" id="tab-members" onclick="switchPage('members')">👨‍👩‍👧 Members</button>
+  </div>
+
+  <div class="nav-right">
+    <button class="nav-alert-btn" id="navAlertBtn" onclick="openThreatModal()">
+      🚨 Active Alert — View Now
+    </button>
+    <span class="nav-time" id="navTime">--:--:--</span>
+    <div class="nav-dot"></div>
+  </div>
+</nav>
+
+<!-- ====================================================== -->
+<!-- PAGE 1: DASHBOARD -->
+<!-- ====================================================== -->
+<div class="page active" id="page-dashboard">
+  <div class="wrapper">
+
+    <!-- CONTROL BAR -->
+    <div class="control-bar">
+      <div class="control-left">
+        <span class="control-label">System Control</span>
+        <div class="system-status" id="sysStatus">
+          <div class="nav-dot"></div>
+          <span id="sysStatusText">MONITORING ACTIVE</span>
+        </div>
+      </div>
+      <div class="control-buttons">
+        <button class="btn btn-primary" onclick="startMonitoring()">▶ Start Monitoring</button>
+        <button class="btn btn-stop" onclick="stopMonitoring()">⏹ Stop</button>
+        <button class="btn btn-handle" onclick="openModal('handleModal')">✓ Mark Alert Handled</button>
+      </div>
+    </div>
+
+    <!-- TOP STAT CARDS -->
+    <div class="grid-top">
+      <div class="card card-alert">
+        <div class="card-label">Alert Status</div>
+        <div class="card-value val-red" id="alertStatus">⚠ THREAT</div>
+        <div class="card-sub" id="alertSub">Detected · 10:32 PM</div>
+      </div>
+      <div class="card card-risk">
+        <div class="card-label">Risk Level</div>
+        <div class="card-value val-yellow" id="riskLevel">HIGH</div>
+        <div class="card-sub">Posture Anomaly</div>
+      </div>
+      <div class="card card-score">
+        <div class="card-label">Risk Score</div>
+        <div class="card-value val-blue" id="riskScore">0.82</div>
+        <div class="card-sub">Threshold: 0.70</div>
+      </div>
+      <div class="card card-location">
+        <div class="card-label">Location</div>
+        <div class="card-value val-cyan" style="font-size:16px;padding-top:6px;" id="location">Sector 12</div>
+        <div class="card-sub">Bus Stop · Camera 01</div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="grid-main">
+
+      <!-- LIVE CAMERA -->
+      <div class="card camera-card">
+        <div class="camera-header">
+          <div class="camera-title"><div class="rec-dot"></div> Live Camera Feed — CAM-01</div>
+          <span class="camera-tag tag-live">● REC</span>
+        </div>
+        <div class="camera-feed">
+          <div class="camera-overlay"></div>
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+          <div class="no-feed" id="feedPlaceholder">
+            <div class="no-feed-icon">📷</div>
+            <div class="no-feed-text">AWAITING FEED...</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Connect camera to begin stream</div>
+          </div>
+        </div>
+        <div class="camera-footer">
+          <span>CAM-01 · Sector 12 Bus Stop</span>
+          <span class="camera-tag tag-active">AI Active</span>
+        </div>
+      </div>
+
+      <!-- AI DETECTION -->
+      <div class="card">
+        <div class="detection-header">
+          <div class="detection-title">AI Detection Metrics</div>
+          <span class="ai-badge">MediaPipe v0.10</span>
+        </div>
+        <div class="detection-metrics">
+          <div class="metric-row">
+            <div class="metric-label"><span class="metric-name">Threat Probability</span><span class="metric-val val-red" id="m1val">82%</span></div>
+            <div class="bar-track"><div class="bar-fill bar-red" id="m1bar" style="width:82%"></div></div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label"><span class="metric-name">Posture Anomaly</span><span class="metric-val val-yellow" id="m2val">74%</span></div>
+            <div class="bar-track"><div class="bar-fill bar-yellow" id="m2bar" style="width:74%"></div></div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label"><span class="metric-name">Model Confidence</span><span class="metric-val val-green" id="m3val">91%</span></div>
+            <div class="bar-track"><div class="bar-fill bar-green" id="m3bar" style="width:91%"></div></div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label"><span class="metric-name">Edge Processing</span><span class="metric-val val-blue">Active</span></div>
+            <div class="bar-track"><div class="bar-fill bar-blue" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin:18px 0;"></div>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.1em;">Recent Events</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--red-dim);border-radius:8px;border-left:3px solid var(--red);">
+            <span>🚨 High threat detected</span><span style="color:var(--muted2);font-family:'Space Mono',monospace;font-size:11px;">10:32 PM</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--yellow-dim);border-radius:8px;border-left:3px solid var(--yellow);">
+            <span>⚠ Posture anomaly</span><span style="color:var(--muted2);font-family:'Space Mono',monospace;font-size:11px;">08:10 PM</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--green-dim);border-radius:8px;border-left:3px solid var(--green);">
+            <span>✓ All clear</span><span style="color:var(--muted2);font-family:'Space Mono',monospace;font-size:11px;">05:45 PM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAMILY PROFILES (live from members data) -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">👨‍👩‍👧‍👦 Family Members</div>
+          <button class="view-all" onclick="switchPage('members')">+ Add Member</button>
+        </div>
+        <div class="profiles-grid" id="dashboardProfiles">
+          <div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px;">
+            No members yet.<br/>
+            <span style="color:var(--green);cursor:pointer;text-decoration:underline;" onclick="switchPage('members')">Register members →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM GRID -->
+    <div class="grid-bottom">
+
+      <!-- ALERT HISTORY -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">🚨 Alert History <span class="section-count">3</span></div>
+          <button class="view-all">View All</button>
+        </div>
+        <table class="alert-table">
+          <thead>
+            <tr><th>Time</th><th>Location</th><th>Person</th><th>Risk</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-family:'Space Mono',monospace;font-size:12px;">10:32 PM</td>
+              <td>Sector 12 Bus Stop</td><td id="alert1person">—</td>
+              <td><span class="risk-badge risk-high">HIGH</span></td>
+              <td><button class="btn btn-handle" style="padding:5px 12px;font-size:11px;" onclick="openModal('handleModal')">Handle</button></td>
+            </tr>
+            <tr>
+              <td style="font-family:'Space Mono',monospace;font-size:12px;">08:10 PM</td>
+              <td>City Park</td><td id="alert2person">—</td>
+              <td><span class="risk-badge risk-medium">MEDIUM</span></td>
+              <td><button class="btn btn-handle" style="padding:5px 12px;font-size:11px;opacity:0.5;" disabled>Done</button></td>
+            </tr>
+            <tr>
+              <td style="font-family:'Space Mono',monospace;font-size:12px;">05:45 PM</td>
+              <td>Main Street</td><td id="alert3person">—</td>
+              <td><span class="risk-badge risk-low">LOW</span></td>
+              <td><button class="btn btn-handle" style="padding:5px 12px;font-size:11px;opacity:0.5;" disabled>Done</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SNAPSHOTS + SYSTEM STATUS -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">📸 Evidence Snapshots <span class="section-count green-count">3</span></div>
+            <button class="view-all">View All</button>
+          </div>
+          <div class="snapshots-grid">
+            <div class="snapshot-item" onclick="showToast('📸','Snapshot 1','HIGH Risk · 10:32 PM · Sector 12')">
+              <div class="snapshot-placeholder" style="background:rgba(239,68,68,0.08);">
+                <div class="snap-icon">📷</div><div class="snap-time">10:32 PM</div>
+              </div>
+              <div class="snapshot-overlay"><div class="snap-label">Sector 12 Bus Stop</div><div class="snap-sub">High Threat</div></div>
+              <span class="snap-badge risk-high">HIGH</span>
+            </div>
+            <div class="snapshot-item" onclick="showToast('📸','Snapshot 2','MEDIUM Risk · 08:10 PM · City Park')">
+              <div class="snapshot-placeholder" style="background:rgba(245,158,11,0.08);">
+                <div class="snap-icon">📷</div><div class="snap-time">08:10 PM</div>
+              </div>
+              <div class="snapshot-overlay"><div class="snap-label">City Park</div><div class="snap-sub">Posture Anomaly</div></div>
+              <span class="snap-badge risk-medium">MED</span>
+            </div>
+            <div class="snapshot-item" onclick="showToast('📸','Snapshot 3','LOW Risk · 05:45 PM · Main Street')">
+              <div class="snapshot-placeholder" style="background:rgba(34,197,94,0.06);">
+                <div class="snap-icon">📷</div><div class="snap-time">05:45 PM</div>
+              </div>
+              <div class="snapshot-overlay"><div class="snap-label">Main Street</div><div class="snap-sub">All Clear</div></div>
+              <span class="snap-badge risk-low">LOW</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header"><div class="section-title">⚙️ System Status</div></div>
+          <div class="system-checks">
+            <div class="check-item"><div class="check-left"><span class="check-icon">🤖</span> AI Model (MediaPipe)</div><span class="check-badge check-ok">Active</span></div>
+            <div class="check-item"><div class="check-left"><span class="check-icon">⚡</span> Edge Processing</div><span class="check-badge check-ok">Enabled</span></div>
+            <div class="check-item"><div class="check-left"><span class="check-icon">🔔</span> Alert System (Twilio)</div><span class="check-badge check-ok">Running</span></div>
+            <div class="check-item"><div class="check-left"><span class="check-icon">📷</span> Camera Feed</div><span class="check-badge check-warn">Connecting</span></div>
+            <div class="check-item"><div class="check-left"><span class="check-icon">💾</span> Database (SQLite)</div><span class="check-badge check-ok">Connected</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- PAGE 2: MEMBERS -->
+<!-- ====================================================== -->
+<div class="page" id="page-members">
+  <div class="wrapper">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title">👨‍👩‍👧‍👦 Family Members</div>
+        <div class="page-sub">Register members for AI face recognition & safety monitoring</div>
+      </div>
+      <button class="btn btn-primary" onclick="scrollToForm()">+ Register New Member</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--green-dim);">👥</div>
+        <div><div class="stat-val" id="totalCount" style="color:var(--green)">0</div><div class="stat-lbl">Total Registered</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--green-dim);">✅</div>
+        <div><div class="stat-val" id="safeCount" style="color:var(--green)">0</div><div class="stat-lbl">Currently Safe</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--red-dim);">⚠️</div>
+        <div><div class="stat-val" id="alertCount" style="color:var(--red)">0</div><div class="stat-lbl">Under Alert</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--blue-dim);">📷</div>
+        <div><div class="stat-val" id="recognizedCount" style="color:var(--blue)">0</div><div class="stat-lbl">AI Recognized</div></div>
+      </div>
+    </div>
+
+    <div class="members-main-grid">
+
+      <div class="members-grid" id="membersGrid">
+        <div class="empty-state">
+          <div class="empty-icon">👨‍👩‍👧‍👦</div>
+          <div class="empty-text">No members registered yet</div>
+          <div class="empty-sub">Add family members using the form →</div>
+        </div>
+      </div>
+
+      <div class="form-card" id="registerForm">
+        <div class="form-title">Register Member</div>
+        <div class="form-sub">AI will learn this face & monitor them on camera</div>
+
+        <div class="form-group">
+          <label class="form-label">📸 Face Photo (for AI Recognition)</label>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" accept="image/*" id="photoInput" onchange="handlePhotoUpload(event)"/>
+            <div class="upload-icon" id="uploadIcon">📷</div>
+            <div class="upload-text" id="uploadText">Click or drag photo here</div>
+            <div class="upload-hint" id="uploadHint">JPG, PNG · Clear face photo recommended</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">👤 Full Name</label>
+          <input type="text" class="form-input" id="memberName" placeholder="e.g. Grandma Kaur"/>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">🏷 Role</label>
+          <select class="form-input" id="memberRole">
+            <option value="">Select role...</option>
+            <option value="Elder">👴 Elder (Grandparent)</option>
+            <option value="Child">👶 Child</option>
+            <option value="Nanny">🧑‍🍼 Nanny / Caretaker</option>
+            <option value="Other">👤 Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📱 Phone Number (for SMS Alerts)</label>
+          <input type="tel" class="form-input" id="memberPhone" placeholder="+91 98765 43210"/>
+        </div>
+
+        <hr class="form-divider"/>
+
+        <div class="ai-info-box">
+          <div class="ai-info-title">🤖 How AI Recognition Works</div>
+          <div class="ai-info-text">After registration, the AI model will learn this person's face. When detected on camera, their name & status will automatically appear on the dashboard in real time.</div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="registerMember()">✓ Register & Train AI</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ====== THREAT ALERT MODAL ====== -->
+<div class="threat-modal-overlay" id="threatModal">
+  <div class="threat-modal">
+
+    <div class="threat-header">
+      <div class="threat-icon-big">🚨</div>
+      <div>
+        <div class="threat-title-text">THREAT DETECTED!</div>
+        <div class="threat-subtitle">Alerting all registered relatives immediately</div>
+      </div>
+    </div>
+
+    <div class="alert-sent-banner" id="alertSentBanner">
+      ✅ All alerts sent successfully to relatives!
+    </div>
+
+    <div class="threat-info-grid">
+      <div class="threat-info-item">
+        <div class="threat-info-label">Risk Level</div>
+        <div class="threat-info-val val-red">HIGH</div>
+      </div>
+      <div class="threat-info-item">
+        <div class="threat-info-label">Risk Score</div>
+        <div class="threat-info-val val-blue">0.82</div>
+      </div>
+      <div class="threat-info-item">
+        <div class="threat-info-label">Location</div>
+        <div class="threat-info-val val-cyan">Sector 12</div>
+      </div>
+      <div class="threat-info-item">
+        <div class="threat-info-label">Time Detected</div>
+        <div class="threat-info-val" id="threatTime" style="color:var(--muted2);">--:--</div>
+      </div>
+    </div>
+
+    <div class="alert-channels">
+      <div class="alert-channel-title">📡 Alert Channels</div>
+      <div class="channel-row" id="ch-sms">
+        <div class="channel-left"><span class="channel-icon">📱</span> SMS Alert (Twilio)</div>
+        <span class="channel-status status-pending" id="ch-sms-status">Pending</span>
+      </div>
+      <div class="channel-row" id="ch-whatsapp">
+        <div class="channel-left"><span class="channel-icon">💬</span> WhatsApp Message</div>
+        <span class="channel-status status-pending" id="ch-whatsapp-status">Pending</span>
+      </div>
+      <div class="channel-row" id="ch-email">
+        <div class="channel-left"><span class="channel-icon">📧</span> Email Notification</div>
+        <span class="channel-status status-pending" id="ch-email-status">Pending</span>
+      </div>
+    </div>
+
+    <div class="relatives-section">
+      <div class="alert-channel-title">👥 Notifying Relatives</div>
+      <div id="relativesList">
+        <div class="relative-item">
+          <div class="relative-avatar">👨</div>
+          <div class="relative-info">
+            <div class="relative-name">Son (Rajveer)</div>
+            <div class="relative-phone">+91 98765 43210</div>
+          </div>
+          <span class="relative-sent" id="rel1-status">⏳ Sending...</span>
+        </div>
+        <div class="relative-item">
+          <div class="relative-avatar">👩</div>
+          <div class="relative-info">
+            <div class="relative-name">Daughter (Simran)</div>
+            <div class="relative-phone">+91 87654 32109</div>
+          </div>
+          <span class="relative-sent" id="rel2-status">⏳ Sending...</span>
+        </div>
+        <div class="relative-item">
+          <div class="relative-avatar">🧑</div>
+          <div class="relative-info">
+            <div class="relative-name">Neighbour (Gurpreet)</div>
+            <div class="relative-phone">+91 76543 21098</div>
+          </div>
+          <span class="relative-sent" id="rel3-status">⏳ Sending...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="threat-actions">
+      <button class="btn-dismiss" onclick="dismissThreat()">✓ Dismiss</button>
+      <button class="btn-send-manual" onclick="resendAlerts()">🔁 Resend All Alerts</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== THREAT ALERT MODAL (AUTO POPUP) ====== -->
+<div class="threat-overlay" id="threatModal">
+  <div class="threat-modal">
+
+    <div class="threat-header">
+      <div class="threat-badge">🚨 THREAT DETECTED</div>
+      <div class="threat-title">⚠️ Danger Alert Triggered!</div>
+      <div class="threat-location">📍 Sector 12 Bus Stop · CAM-01 · <span id="threatTime"></span></div>
+    </div>
+
+    <div class="threat-body">
+
+      <div class="threat-info-row">
+        <div class="threat-info-box">
+          <div class="threat-info-icon">🔴</div>
+          <div class="threat-info-val val-red" id="threatRisk">HIGH</div>
+          <div class="threat-info-lbl">Risk Level</div>
+        </div>
+        <div class="threat-info-box">
+          <div class="threat-info-icon">📊</div>
+          <div class="threat-info-val val-blue" id="threatScore">0.82</div>
+          <div class="threat-info-lbl">Risk Score</div>
+        </div>
+        <div class="threat-info-box">
+          <div class="threat-info-icon">🤖</div>
+          <div class="threat-info-val val-green">91%</div>
+          <div class="threat-info-lbl">AI Confidence</div>
+        </div>
+      </div>
+
+      <div class="alert-channels-title">📡 Sending Alerts to Relatives...</div>
+      <div class="send-progress">
+        <div class="send-progress-fill" id="sendProgressFill"></div>
+      </div>
+
+      <div class="alert-channels">
+        <div class="alert-channel channel-sms">
+          <div class="channel-icon">📱</div>
+          <div class="channel-info">
+            <div class="channel-name">SMS Alert (Twilio)</div>
+            <div class="channel-detail" id="smsDetail">Sending to all relatives...</div>
+          </div>
+          <span class="channel-status status-sending" id="smsStatus">SENDING</span>
+        </div>
+        <div class="alert-channel channel-whatsapp">
+          <div class="channel-icon">💬</div>
+          <div class="channel-info">
+            <div class="channel-name">WhatsApp Message</div>
+            <div class="channel-detail" id="waDetail">Sending to all relatives...</div>
+          </div>
+          <span class="channel-status status-sending" id="waStatus">SENDING</span>
+        </div>
+        <div class="alert-channel channel-email">
+          <div class="channel-icon">📧</div>
+          <div class="channel-info">
+            <div class="channel-name">Email Alert</div>
+            <div class="channel-detail" id="emailDetail">Sending to all relatives...</div>
+          </div>
+          <span class="channel-status status-sending" id="emailStatus">SENDING</span>
+        </div>
+      </div>
+
+      <div class="recipients-title">👥 Alert Recipients</div>
+      <div class="recipients-list" id="recipientsList">
+        <div class="recipient-chip"><div class="recipient-dot"></div> Loading...</div>
+      </div>
+
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">📨 Alert Message Sent</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.6;" id="alertMessage">
+          🚨 SAFETY ALERT: Threat detected at Sector 12 Bus Stop. Risk Level: HIGH. Score: 0.82. Please check immediately and go help!
+        </div>
+      </div>
+
+    </div>
+
+    <div class="threat-footer">
+      <button class="btn-resend" onclick="resendAlerts()">🔁 Resend Alerts</button>
+      <button class="btn-dismiss" onclick="dismissThreat()">✓ I'm Aware — Dismiss</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== THREAT ALERT MODAL ====== -->
+<div class="threat-modal-overlay" id="threatModal">
+  <div class="threat-modal">
+
+    <!-- TOP FLASHING BAR -->
+    <div class="threat-top-bar">
+      <div class="threat-top-title">🚨 THREAT DETECTED — ALERT SENT</div>
+      <div class="threat-top-time" id="threatTime">--:--:--</div>
+    </div>
+
+    <div class="threat-body">
+
+      <!-- LOCATION -->
+      <div class="threat-location-box">
+        <div class="threat-location-icon">📍</div>
+        <div class="threat-location-info">
+          <div class="threat-location-label">⚠ Threat Location</div>
+          <div class="threat-location-name" id="threatLocationName">Sector 12 Bus Stop</div>
+          <div class="threat-location-sub" id="threatLocationSub">Camera 01 · Indoor · High Risk Zone</div>
+        </div>
+      </div>
+
+      <!-- PERSON IN DANGER -->
+      <div class="threat-person-box">
+        <div class="threat-person-avatar" id="threatPersonAvatar">👵</div>
+        <div class="threat-person-info">
+          <div class="threat-person-name" id="threatPersonName">Unknown Person</div>
+          <div class="threat-person-role" id="threatPersonRole">Detected by AI Camera</div>
+        </div>
+        <div class="threat-risk-badge">HIGH RISK</div>
+      </div>
+
+      <!-- ALERTS SENT -->
+      <div class="alerts-sent-title">📤 Alerts Sent Via</div>
+      <div class="alerts-sent-grid">
+        <div class="alert-sent-card sending" id="smsCard">
+          <div class="alert-sent-icon">📱</div>
+          <div class="alert-sent-type">SMS</div>
+          <div class="alert-sent-status" id="smsStatus">Sending...</div>
+        </div>
+        <div class="alert-sent-card sending" id="waCard">
+          <div class="alert-sent-icon">💬</div>
+          <div class="alert-sent-type">WhatsApp</div>
+          <div class="alert-sent-status" id="waStatus">Sending...</div>
+        </div>
+        <div class="alert-sent-card sending" id="emailCard">
+          <div class="alert-sent-icon">📧</div>
+          <div class="alert-sent-type">Email</div>
+          <div class="alert-sent-status" id="emailStatus">Sending...</div>
+        </div>
+      </div>
+
+      <!-- RELATIVES NOTIFIED -->
+      <div class="alerts-sent-title">👨‍👩‍👧 Relatives Being Notified</div>
+      <div class="relatives-list" id="relativesList">
+        <div style="font-size:13px;color:var(--muted2);text-align:center;padding:12px;">
+          Register members to see relatives notified
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER BUTTONS -->
+    <div class="threat-footer">
+      <button class="btn-resolve" onclick="resolveThreat()">✓ Mark as Resolved — Safe Now</button>
+      <button class="btn-keep-open" onclick="closeThreatModal()">Keep Open</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- HANDLE MODAL -->
+<div class="modal-overlay" id="handleModal">
+  <div class="modal">
+    <div class="modal-title">✓ Mark Alert as Handled</div>
+    <div style="font-size:13px;color:var(--muted2);margin-bottom:12px;">This will resolve the current active alert and update the system log.</div>
+    <div style="background:var(--red-dim);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:14px;">
+      <div style="font-size:13px;font-weight:600;color:var(--red);">⚠ Threat Detected — HIGH Risk</div>
+      <div style="font-size:12px;color:var(--muted2);margin-top:4px;">Location: Sector 12 Bus Stop · 10:32 PM</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="confirmHandle()">Confirm Handled</button>
+      <button class="btn-cancel" onclick="closeModal('handleModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Member</div>
+    <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="editName"/></div>
+    <div class="form-group"><label class="form-label">Role</label>
+      <select class="form-input" id="editRole">
+        <option value="Elder">👴 Elder (Grandparent)</option>
+        <option value="Child">👶 Child</option>
+        <option value="Nanny">🧑‍🍼 Nanny / Caretaker</option>
+        <option value="Other">👤 Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" class="form-input" id="editPhone"/></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="saveEdit()">Save Changes</button>
+      <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">🗑 Remove Member?</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:8px;">This will remove the member and their face data from the AI model.</p>
+    <div id="deleteInfo" style="background:var(--red-dim);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:12px;font-size:13px;"></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" style="background:linear-gradient(135deg,var(--red),#b91c1c);" onclick="confirmDelete()">Yes, Remove</button>
+      <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // ====== PAGE SWITCHING ======
+  function switchPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.getElementById('tab-' + page).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (page === 'dashboard') renderDashboardProfiles();
+  }
+
+  // ====== CLOCK ======
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('navTime').textContent =
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ====== DASHBOARD DATA ======
+  const demoData = { alert_status: "⚠ Threat Detected", risk_level: "HIGH", risk_score: "0.82", location: "Sector 12" };
+
+  function updateDashboard(data) {
+    document.getElementById("alertStatus").innerText = data.alert_status;
+    document.getElementById("riskLevel").innerText = data.risk_level;
+    document.getElementById("riskScore").innerText = data.risk_score;
+    document.getElementById("location").innerText = data.location;
+    const isHigh = data.risk_level === "HIGH";
+    const color = isHigh ? "var(--red)" : data.risk_level === "MEDIUM" ? "var(--yellow)" : "var(--green)";
+    ["alertStatus","riskLevel","riskScore"].forEach(id => document.getElementById(id).style.color = color);
+  }
+
+  updateDashboard(demoData);
+
+  // ====== MONITORING ======
+  let monitoring = true;
+
+  function startMonitoring() {
+    monitoring = true;
+    document.getElementById('sysStatus').className = 'system-status';
+    document.getElementById('sysStatusText').textContent = 'MONITORING ACTIVE';
+    document.getElementById('feedPlaceholder').innerHTML = `<div class="no-feed-icon">📷</div><div class="no-feed-text" style="color:var(--green)">STREAM ACTIVE</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">Camera feed connected</div>`;
+    showToast('▶', 'Monitoring Started', 'AI model is now analyzing camera feed');
+  }
+
+  function stopMonitoring() {
+    monitoring = false;
+    document.getElementById('sysStatus').className = 'system-status danger';
+    document.getElementById('sysStatusText').textContent = 'MONITORING STOPPED';
+    document.getElementById('feedPlaceholder').innerHTML = `<div class="no-feed-icon">⏹</div><div class="no-feed-text" style="color:var(--muted2)">FEED PAUSED</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">Press Start to resume</div>`;
+    showToast('⏹', 'Monitoring Stopped', 'System is now in standby mode');
+  }
+
+  // ====== LIVE METRICS ======
+  setInterval(() => {
+    if (!monitoring) return;
+    const t = Math.floor(70 + Math.random() * 20);
+    const p = Math.floor(60 + Math.random() * 25);
+    const c = Math.floor(85 + Math.random() * 10);
+    document.getElementById('m1val').textContent = t + '%';
+    document.getElementById('m1bar').style.width = t + '%';
+    document.getElementById('m2val').textContent = p + '%';
+    document.getElementById('m2bar').style.width = p + '%';
+    document.getElementById('m3val').textContent = c + '%';
+    document.getElementById('m3bar').style.width = c + '%';
+  }, 2500);
+
+  // ====== HANDLE ALERT ======
+  function confirmHandle() {
+    closeModal('handleModal');
+    document.getElementById('alertStatus').innerText = '✓ Handled';
+    document.getElementById('alertStatus').style.color = 'var(--green)';
+    document.getElementById('alertSub').innerText = 'Resolved · just now';
+    showToast('✓', 'Alert Resolved', 'Alert has been marked as handled');
+  }
+
+  // ====== MEMBERS DATA ======
+  let members = JSON.parse(localStorage.getItem('safetyMembers') || '[]');
+  let editIndex = -1;
+  let deleteIndex = -1;
+  let uploadedPhoto = null;
+
+  const roleConfig = {
+    'Elder': { tag: 'role-elder', icon: '👴', label: 'Elder' },
+    'Child': { tag: 'role-child', icon: '👶', label: 'Child' },
+    'Nanny': { tag: 'role-nanny', icon: '🧑‍🍼', label: 'Nanny / Caretaker' },
+    'Other': { tag: 'role-other', icon: '👤', label: 'Other' },
+  };
+
+  const cameras = ['CAM-01 · Sector 12', 'CAM-02 · Main Entrance', 'CAM-03 · Living Room', 'CAM-04 · Garden'];
+
+  // ====== PHOTO UPLOAD ======
+  function handlePhotoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      uploadedPhoto = ev.target.result;
+      const zone = document.getElementById('uploadZone');
+      zone.classList.add('has-image');
+      let preview = document.getElementById('uploadPreview');
+      if (!preview) { preview = document.createElement('img'); preview.id = 'uploadPreview'; preview.className = 'upload-preview'; zone.appendChild(preview); }
+      preview.src = uploadedPhoto;
+      document.getElementById('uploadIcon').style.display = 'none';
+      document.getElementById('uploadText').textContent = '✓ Photo uploaded';
+      document.getElementById('uploadHint').textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ====== REGISTER ======
+  function registerMember() {
+    const name = document.getElementById('memberName').value.trim();
+    const role = document.getElementById('memberRole').value;
+    const phone = document.getElementById('memberPhone').value.trim();
+    if (!name) { showToast('⚠️', 'Name required', 'Please enter a name'); return; }
+    if (!role) { showToast('⚠️', 'Role required', 'Please select a role'); return; }
+    if (!phone) { showToast('⚠️', 'Phone required', 'Please enter a phone number'); return; }
+
+    const member = {
+      id: Date.now(), name, role, phone,
+      photo: uploadedPhoto,
+      status: 'Safe',
+      camera: cameras[Math.floor(Math.random() * cameras.length)],
+      lastSeen: 'Just now',
+      registeredAt: new Date().toLocaleString('en-IN')
+    };
+
+    members.push(member);
+    saveMembers();
+    renderMembers();
+    resetForm();
+    showToast('✅', 'Member Registered!', `${name} added & AI is now learning their face`);
+
+    setTimeout(() => {
+      const idx = members.findIndex(m => m.id === member.id);
+      if (idx !== -1) {
+        members[idx].aiRecognized = true;
+        saveMembers();
+        renderMembers();
+        renderDashboardProfiles();
+        showToast('🤖', 'AI Recognition Ready', `${name} is now being monitored on camera`);
+      }
+    }, 3000);
+  }
+
+  // ====== RENDER MEMBERS PAGE ======
+  function renderMembers() {
+    const grid = document.getElementById('membersGrid');
+    if (members.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">👨‍👩‍👧‍👦</div><div class="empty-text">No members registered yet</div><div class="empty-sub">Add family members using the form →</div></div>`;
+      updateStats(); return;
+    }
+    grid.innerHTML = members.map((m, i) => {
+      const rc = roleConfig[m.role] || roleConfig['Other'];
+      const statusClass = m.status === 'Safe' ? 'status-safe' : m.status === 'Alert' ? 'status-alert' : 'status-offline';
+      const photoContent = m.photo ? `<img src="${m.photo}" class="member-photo" alt="${m.name}"/>` : `<div class="member-avatar-placeholder">${rc.icon}</div>`;
+      return `
+        <div class="member-card" style="animation-delay:${i*0.07}s">
+          <div class="member-photo-wrap">
+            ${photoContent}
+            <div class="scan-line"></div>
+            <span class="member-status-badge ${statusClass}">${m.status === 'Safe' ? '✓ Safe' : m.status === 'Alert' ? '⚠ Alert' : '○ Offline'}</span>
+          </div>
+          <div class="member-body">
+            <div class="member-name">${m.name}</div>
+            <span class="member-role-tag ${rc.tag}">${rc.icon} ${rc.label}</span>
+            <div class="member-meta">
+              <div class="meta-row"><span class="meta-icon">📱</span><span class="meta-val">${m.phone}</span></div>
+              <div class="meta-row"><span class="meta-icon">📷</span><span class="meta-val">${m.aiRecognized ? m.camera : 'Awaiting recognition...'}</span></div>
+              <div class="meta-row"><span class="meta-icon">🕒</span><span class="meta-val">${m.lastSeen}</span></div>
+              <div class="meta-row"><span class="meta-icon">🤖</span><span class="meta-val" style="color:${m.aiRecognized ? 'var(--green)' : 'var(--yellow)'}">
+                ${m.aiRecognized ? '✓ AI Trained & Monitoring' : '⏳ Training AI model...'}
+              </span></div>
+            </div>
+          </div>
+          <div class="member-footer">
+            <button class="btn-sm btn-sm-edit" onclick="openEditMember(${i})">✏ Edit</button>
+            <button class="btn-sm btn-sm-delete" onclick="openDeleteMember(${i})">🗑 Remove</button>
+          </div>
+        </div>`;
+    }).join('');
+    updateStats();
+    renderDashboardProfiles();
+  }
+
+  // ====== RENDER DASHBOARD PROFILES (from members data) ======
+  function renderDashboardProfiles() {
+    const container = document.getElementById('dashboardProfiles');
+    // update alert table persons
+    const names = members.map(m => m.name);
+    ['alert1person','alert2person','alert3person'].forEach((id, i) => {
+      document.getElementById(id).textContent = names[i] || '—';
+    });
+
+    if (members.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px;">No members yet.<br/><span style="color:var(--green);cursor:pointer;text-decoration:underline;" onclick="switchPage('members')">Register members →</span></div>`;
+      return;
+    }
+    container.innerHTML = members.map(m => {
+      const rc = roleConfig[m.role] || roleConfig['Other'];
+      const statusClass = m.status === 'Safe' ? 'status-safe' : m.status === 'Alert' ? 'status-alert' : 'status-away';
+      const avatarContent = m.photo ? `<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : rc.icon;
+      return `
+        <div class="profile-card">
+          <div class="profile-avatar">${avatarContent}</div>
+          <div class="profile-info">
+            <div class="profile-name">${m.name}</div>
+            <div class="profile-role">${rc.label}</div>
+          </div>
+          <div class="profile-right">
+            <span class="profile-status ${statusClass}">${m.status}</span>
+            <span class="profile-time">${m.lastSeen}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ====== STATS ======
+  function updateStats() {
+    document.getElementById('totalCount').textContent = members.length;
+    document.getElementById('safeCount').textContent = members.filter(m => m.status === 'Safe').length;
+    document.getElementById('alertCount').textContent = members.filter(m => m.status === 'Alert').length;
+    document.getElementById('recognizedCount').textContent = members.filter(m => m.aiRecognized).length;
+  }
+
+  // ====== EDIT ======
+  function openEditMember(i) {
+    editIndex = i;
+    const m = members[i];
+    document.getElementById('editName').value = m.name;
+    document.getElementById('editRole').value = m.role;
+    document.getElementById('editPhone').value = m.phone;
+    openModal('editModal');
+  }
+
+  function saveEdit() {
+    if (editIndex < 0) return;
+    members[editIndex].name = document.getElementById('editName').value.trim();
+    members[editIndex].role = document.getElementById('editRole').value;
+    members[editIndex].phone = document.getElementById('editPhone').value.trim();
+    saveMembers(); renderMembers(); closeModal('editModal');
+    showToast('✅', 'Member Updated', 'Changes saved successfully');
+  }
+
+  // ====== DELETE ======
+  function openDeleteMember(i) {
+    deleteIndex = i;
+    const m = members[i];
+    document.getElementById('deleteInfo').textContent = `${m.name} · ${m.role} · ${m.phone}`;
+    openModal('deleteModal');
+  }
+
+  function confirmDelete() {
+    if (deleteIndex < 0) return;
+    const name = members[deleteIndex].name;
+    members.splice(deleteIndex, 1);
+    saveMembers(); renderMembers(); closeModal('deleteModal');
+    showToast('🗑', 'Member Removed', `${name} has been removed from the system`);
+  }
+
+  // ====== SAVE ======
+  function saveMembers() { localStorage.setItem('safetyMembers', JSON.stringify(members)); }
+
+  // ====== RESET FORM ======
+  function resetForm() {
+    ['memberName','memberPhone'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('memberRole').value = '';
+    document.getElementById('photoInput').value = '';
+    uploadedPhoto = null;
+    const zone = document.getElementById('uploadZone');
+    zone.classList.remove('has-image');
+    const preview = document.getElementById('uploadPreview');
+    if (preview) preview.remove();
+    document.getElementById('uploadIcon').style.display = '';
+    document.getElementById('uploadText').textContent = 'Click or drag photo here';
+    document.getElementById('uploadHint').textContent = 'JPG, PNG · Clear face photo recommended';
+  }
+
+  function scrollToForm() {
+    document.getElementById('registerForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('memberName').focus();
+  }
+
+  // ====== MODAL ======
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+  });
+
+  // ====== TOAST ======
+  function showToast(icon, title, sub) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><div class="toast-text"><div class="toast-title">${title}</div><div class="toast-sub">${sub}</div></div>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 400); }, 3500);
+  }
+
+  // ====== THREAT ALERT SYSTEM ======
+  let alertsSent = false;
+  let threatTimeout = null;
+
+  function triggerThreatAlert() {
+    // Set current time
+    const now = new Date();
+    document.getElementById('threatTime').textContent =
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Reset all statuses
+    alertsSent = false;
+    document.getElementById('alertSentBanner').classList.remove('show');
+
+    // Reset channels to pending
+    ['sms','whatsapp','email'].forEach(ch => {
+      const row = document.getElementById('ch-' + ch);
+      const status = document.getElementById('ch-' + ch + '-status');
+      row.classList.remove('sent','sending');
+      status.className = 'channel-status status-pending';
+      status.textContent = 'Pending';
+    });
+
+    // Reset relatives
+    ['rel1-status','rel2-status','rel3-status'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '⏳ Sending...'; el.style.color = 'var(--yellow)'; }
+    });
+
+    // Update relatives list from registered members (phone numbers)
+    if (members.length > 0) {
+      const list = document.getElementById('relativesList');
+      list.innerHTML = members.map((m, i) => {
+        const rc = roleConfig[m.role] || roleConfig['Other'];
+        return `
+          <div class="relative-item">
+            <div class="relative-avatar">${rc.icon}</div>
+            <div class="relative-info">
+              <div class="relative-name">${m.name}</div>
+              <div class="relative-phone">${m.phone}</div>
+            </div>
+            <span id="dyn-rel${i}-status" style="font-size:11px;color:var(--yellow);font-weight:600;">⏳ Sending...</span>
+          </div>`;
+      }).join('');
+    }
+
+    // Show modal + flashing border
+    document.getElementById('threatModal').classList.add('open');
+    document.body.classList.add('threat-active');
+
+    // Simulate sending channels one by one
+    setTimeout(() => {
+      simulateSend('sms', 'SMS Alert (Twilio)');
+    }, 800);
+
+    setTimeout(() => {
+      simulateSend('whatsapp', 'WhatsApp Message');
+    }, 1800);
+
+    setTimeout(() => {
+      simulateSend('email', 'Email Notification');
+    }, 2800);
+
+    // Mark all relatives as sent
+    setTimeout(() => {
+      if (members.length > 0) {
+        members.forEach((m, i) => {
+          const el = document.getElementById(`dyn-rel${i}-status`);
+          if (el) { el.textContent = '✅ Alert Sent'; el.style.color = 'var(--green)'; }
+        });
+      } else {
+        ['rel1-status','rel2-status','rel3-status'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.textContent = '✅ Alert Sent'; el.style.color = 'var(--green)'; }
+        });
+      }
+
+      // Show success banner
+      document.getElementById('alertSentBanner').classList.add('show');
+      alertsSent = true;
+      showToast('🚨', 'Alerts Sent!', 'All relatives notified via SMS, WhatsApp & Email');
+    }, 3500);
+  }
+
+  function simulateSend(channel, label) {
+    const row = document.getElementById('ch-' + channel);
+    const status = document.getElementById('ch-' + channel + '-status');
+
+    // Sending state
+    row.classList.add('sending');
+    status.className = 'channel-status status-sending';
+    status.textContent = 'Sending...';
+
+    setTimeout(() => {
+      // Sent state
+      row.classList.remove('sending');
+      row.classList.add('sent');
+      status.className = 'channel-status status-sent';
+      status.textContent = '✓ Sent';
+    }, 900);
+  }
+
+  function dismissThreat() {
+    document.getElementById('threatModal').classList.remove('open');
+    document.body.classList.remove('threat-active');
+    showToast('✓', 'Alert Dismissed', 'Threat modal closed. Stay vigilant!');
+  }
+
+  function resendAlerts() {
+    alertsSent = false;
+    document.getElementById('alertSentBanner').classList.remove('show');
+
+    // Reset all
+    ['sms','whatsapp','email'].forEach(ch => {
+      const row = document.getElementById('ch-' + ch);
+      const status = document.getElementById('ch-' + ch + '-status');
+      row.classList.remove('sent','sending');
+      status.className = 'channel-status status-pending';
+      status.textContent = 'Pending';
+    });
+
+    showToast('🔁', 'Resending Alerts...', 'All channels being triggered again');
+
+    setTimeout(() => simulateSend('sms'), 500);
+    setTimeout(() => simulateSend('whatsapp'), 1400);
+    setTimeout(() => simulateSend('email'), 2200);
+
+    setTimeout(() => {
+      document.getElementById('alertSentBanner').classList.add('show');
+      showToast('✅', 'Alerts Resent!', 'All relatives notified again successfully');
+    }, 3200);
+  }
+
+  // ====== AUTO TRIGGER (simulate threat after 4 seconds on load for demo) ======
+  // In real project, this will be called from Flask when AI detects threat
+  // Comment this out to disable auto demo
+  setTimeout(() => {
+    triggerThreatAlert();
+  }, 4000);
+
+  // ====== FLASK INTEGRATION HOOK ======
+  // Your backend team calls this function when threat is detected:
+  // triggerThreatAlert();
+
+  // ====== THREAT ALERT SYSTEM ======
+  let threatShown = false;
+
+  function triggerThreatAlert() {
+    if (document.getElementById('threatModal').classList.contains('open')) return;
+
+    // Set time
+    const now = new Date();
+    document.getElementById('threatTime').textContent =
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Set risk values from dashboard
+    document.getElementById('threatRisk').textContent = document.getElementById('riskLevel').textContent;
+    document.getElementById('threatScore').textContent = document.getElementById('riskScore').textContent;
+
+    // Build recipients from registered members + default relatives
+    buildRecipients();
+
+    // Open modal
+    document.getElementById('threatModal').classList.add('open');
+    document.body.classList.add('threat-active');
+
+    // Animate progress bar
+    setTimeout(() => {
+      document.getElementById('sendProgressFill').style.width = '100%';
+    }, 200);
+
+    // Simulate SMS sent
+    setTimeout(() => {
+      document.getElementById('smsStatus').className = 'channel-status status-sent';
+      document.getElementById('smsStatus').textContent = '✓ SENT';
+      document.getElementById('smsDetail').textContent = 'Delivered to all relatives';
+      showToast('📱', 'SMS Alert Sent!', 'All relatives notified via Twilio');
+    }, 1200);
+
+    // Simulate WhatsApp sent
+    setTimeout(() => {
+      document.getElementById('waStatus').className = 'channel-status status-sent';
+      document.getElementById('waStatus').textContent = '✓ SENT';
+      document.getElementById('waDetail').textContent = 'Message delivered on WhatsApp';
+      showToast('💬', 'WhatsApp Alert Sent!', 'Message delivered to family group');
+    }, 2200);
+
+    // Simulate Email sent
+    setTimeout(() => {
+      document.getElementById('emailStatus').className = 'channel-status status-sent';
+      document.getElementById('emailStatus').textContent = '✓ SENT';
+      document.getElementById('emailDetail').textContent = 'Email delivered to all contacts';
+      showToast('📧', 'Email Alert Sent!', 'Emergency email delivered');
+    }, 3000);
+  }
+
+  function buildRecipients() {
+    const container = document.getElementById('recipientsList');
+    const phones = members.map(m => m.phone).filter(Boolean);
+
+    // Always show at least default relatives
+    const defaultRelatives = ['+91 98765 43210', '+91 87654 32109'];
+    const allRecipients = phones.length > 0 ? phones : defaultRelatives;
+
+    const names = members.length > 0
+      ? members.map(m => m.name)
+      : ['Relative 1', 'Relative 2'];
+
+    container.innerHTML = allRecipients.map((phone, i) => `
+      <div class="recipient-chip">
+        <div class="recipient-dot"></div>
+        ${names[i] || 'Relative ' + (i+1)} · ${phone}
+      </div>`).join('') +
+      `<div class="recipient-chip" style="border-color:rgba(59,130,246,0.3);">
+        <div class="recipient-dot" style="background:var(--blue)"></div>
+        Emergency Contact
+      </div>`;
+
+    // Update alert message
+    const location = document.getElementById('location').textContent;
+    const risk = document.getElementById('riskLevel').textContent;
+    const score = document.getElementById('riskScore').textContent;
+    document.getElementById('alertMessage').textContent =
+      `🚨 SAFETY ALERT: Threat detected at ${location}. Risk Level: ${risk}. AI Score: ${score}. Please check immediately and go help the person in danger!`;
+  }
+
+  function dismissThreat() {
+    document.getElementById('threatModal').classList.remove('open');
+    document.body.classList.remove('threat-active');
+    // Reset channel statuses for next time
+    resetChannelStatuses();
+    showToast('✓', 'Alert Dismissed', 'Stay alert — system continues monitoring');
+  }
+
+  function resendAlerts() {
+    resetChannelStatuses();
+    document.getElementById('sendProgressFill').style.width = '0%';
+    setTimeout(() => { document.getElementById('sendProgressFill').style.width = '100%'; }, 200);
+    setTimeout(() => {
+      document.getElementById('smsStatus').className = 'channel-status status-sent';
+      document.getElementById('smsStatus').textContent = '✓ SENT';
+      document.getElementById('smsDetail').textContent = 'Resent to all relatives';
+    }, 1000);
+    setTimeout(() => {
+      document.getElementById('waStatus').className = 'channel-status status-sent';
+      document.getElementById('waStatus').textContent = '✓ SENT';
+      document.getElementById('waDetail').textContent = 'Resent on WhatsApp';
+    }, 1800);
+    setTimeout(() => {
+      document.getElementById('emailStatus').className = 'channel-status status-sent';
+      document.getElementById('emailStatus').textContent = '✓ SENT';
+      document.getElementById('emailDetail').textContent = 'Email resent successfully';
+      showToast('🔁', 'Alerts Resent!', 'All relatives notified again');
+    }, 2600);
+  }
+
+  function resetChannelStatuses() {
+    ['smsStatus','waStatus','emailStatus'].forEach(id => {
+      document.getElementById(id).className = 'channel-status status-sending';
+      document.getElementById(id).textContent = 'SENDING';
+    });
+    document.getElementById('smsDetail').textContent = 'Sending to all relatives...';
+    document.getElementById('waDetail').textContent = 'Sending to all relatives...';
+    document.getElementById('emailDetail').textContent = 'Sending to all relatives...';
+  }
+
+  // Auto trigger threat alert after 4 seconds (demo — in real app triggered by backend)
+  setTimeout(() => {
+    triggerThreatAlert();
+  }, 4000);
+
+  // ====== THREAT ALERT SYSTEM ======
+  let threatActive = false;
+  let threatTimeout = null;
+
+  function openThreatModal() {
+    // Fill in person info from members if available
+    const alertMember = members.find(m => m.status === 'Alert') || members[0];
+    const rc = alertMember ? (roleConfig[alertMember.role] || roleConfig['Other']) : null;
+
+    // Set location
+    document.getElementById('threatLocationName').textContent = document.getElementById('location').textContent + ' Bus Stop';
+    document.getElementById('threatLocationSub').textContent = 'Camera 01 · Outdoor · High Risk Zone';
+
+    // Set person
+    if (alertMember) {
+      const avatarEl = document.getElementById('threatPersonAvatar');
+      if (alertMember.photo) {
+        avatarEl.innerHTML = `<img src="${alertMember.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+      } else {
+        avatarEl.textContent = rc ? rc.icon : '👤';
+      }
+      document.getElementById('threatPersonName').textContent = alertMember.name;
+      document.getElementById('threatPersonRole').textContent = rc ? rc.label + ' · Registered Member' : 'Registered Member';
+    } else {
+      document.getElementById('threatPersonAvatar').textContent = '👵';
+      document.getElementById('threatPersonName').textContent = 'Unknown Person';
+      document.getElementById('threatPersonRole').textContent = 'Detected by AI Camera';
+    }
+
+    // Set time
+    document.getElementById('threatTime').textContent = new Date().toLocaleTimeString('en-IN');
+
+    // Render relatives list
+    renderRelativesList();
+
+    // Reset sending states
+    ['smsCard','waCard','emailCard'].forEach(id => {
+      const card = document.getElementById(id);
+      card.className = 'alert-sent-card sending';
+    });
+    document.getElementById('smsStatus').textContent = 'Sending...';
+    document.getElementById('waStatus').textContent = 'Sending...';
+    document.getElementById('emailStatus').textContent = 'Sending...';
+
+    // Open modal
+    document.getElementById('threatModal').classList.add('open');
+
+    // Simulate sending alerts one by one
+    setTimeout(() => {
+      document.getElementById('smsCard').className = 'alert-sent-card sent';
+      document.getElementById('smsStatus').textContent = '✓ Delivered';
+    }, 1200);
+
+    setTimeout(() => {
+      document.getElementById('waCard').className = 'alert-sent-card sent';
+      document.getElementById('waStatus').textContent = '✓ Delivered';
+    }, 2000);
+
+    setTimeout(() => {
+      document.getElementById('emailCard').className = 'alert-sent-card sent';
+      document.getElementById('emailStatus').textContent = '✓ Delivered';
+    }, 2800);
+
+    // Simulate relatives being notified
+    setTimeout(() => {
+      renderRelativesListNotified();
+    }, 2000);
+  }
+
+  function renderRelativesList() {
+    const list = document.getElementById('relativesList');
+    if (members.length === 0) {
+      list.innerHTML = `<div style="font-size:13px;color:var(--muted2);text-align:center;padding:12px;">Register members to see relatives notified</div>`;
+      return;
+    }
+    list.innerHTML = members.map(m => `
+      <div class="relative-row" id="rel-${m.id}">
+        <div class="relative-left">
+          <span class="relative-icon">${(roleConfig[m.role] || roleConfig['Other']).icon}</span>
+          <div>
+            <div class="relative-name">${m.name}</div>
+            <div class="relative-phone">${m.phone}</div>
+          </div>
+        </div>
+        <span class="notified-badge badge-pending">⏳ Pending</span>
+      </div>`).join('');
+  }
+
+  function renderRelativesListNotified() {
+    members.forEach((m, i) => {
+      setTimeout(() => {
+        const row = document.getElementById('rel-' + m.id);
+        if (row) {
+          row.classList.add('notified');
+          row.querySelector('.notified-badge').className = 'notified-badge badge-sent';
+          row.querySelector('.notified-badge').textContent = '✓ Notified';
+        }
+      }, i * 500);
+    });
+  }
+
+  function closeThreatModal() {
+    document.getElementById('threatModal').classList.remove('open');
+  }
+
+  function resolveThreat() {
+    closeThreatModal();
+    threatActive = false;
+    document.getElementById('navAlertBtn').classList.remove('visible');
+    document.getElementById('alertStatus').innerText = '✓ Resolved';
+    document.getElementById('alertStatus').style.color = 'var(--green)';
+    document.getElementById('alertSub').innerText = 'Resolved · just now';
+    document.getElementById('sysStatus').className = 'system-status';
+    document.getElementById('sysStatusText').textContent = 'MONITORING ACTIVE';
+    showToast('✅', 'Threat Resolved', 'All relatives have been informed — situation is safe');
+  }
+
+  // ====== AUTO TRIGGER THREAT ALERT (simulate after 4 seconds) ======
+  setTimeout(() => {
+    triggerThreatAlert();
+  }, 4000);
+
+  function triggerThreatAlert() {
+    if (threatActive) return;
+    threatActive = true;
+
+    // Show red alert button in navbar
+    document.getElementById('navAlertBtn').classList.add('visible');
+
+    // Update dashboard status
+    document.getElementById('sysStatus').className = 'system-status danger';
+    document.getElementById('sysStatusText').textContent = '⚠ THREAT DETECTED';
+
+    // Show toast first
+    showToast('🚨', 'THREAT DETECTED!', 'Alerts being sent to all relatives now...');
+
+    // Open modal after 1.5 seconds
+    setTimeout(() => {
+      openThreatModal();
+    }, 1500);
+  }
+
+  // Close threat modal on overlay click
+  document.getElementById('threatModal').addEventListener('click', function(e) {
+    if (e.target === this) closeThreatModal();
+  });
+
+  // ====== INIT ======
+  renderMembers();
+  renderDashboardProfiles();
+
+  // Backend fetch (ready for Flask)
+  async function fetchStatus() {
+    try {
+      const res = await fetch('/status');
+      if (!res.ok) return;
+      const data = await res.json();
+      updateDashboard(data);
+    } catch (e) {}
+  }
+  setInterval(fetchStatus, 5000);
+</script>
+</body>
+</html>
