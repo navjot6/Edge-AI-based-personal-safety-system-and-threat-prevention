@@ -11,13 +11,13 @@ This project aims to enhance personal safety by using Artificial Intelligence an
 
 ## 🚀 Features
 
-- 🎥 Live video streaming using OpenCV
-- 🤖 Real-time threat detection (AI/ML based)
-- 🚨 Automatic alert generation
-- 🗺️ Live threat location visualization using Leaflet + OpenStreetMap
-- 📊 Dashboard for monitoring alerts
-- 🔄 Auto-refreshing system (real-time updates)
-- 🧑‍🤝‍🧑 Members page for project details
+-  Live video streaming using OpenCV
+-  Real-time threat detection (AI/ML based)
+-  Automatic alert generation
+-  Live threat location visualization using Leaflet + OpenStreetMap
+-  Dashboard for monitoring alerts
+-  Auto-refreshing system (real-time updates)
+-  Members page for project details
 
 ---
 
@@ -67,10 +67,16 @@ CREATE TABLE alert (
     longitude FLOAT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+
 4️⃣ Run the application
 python app.py
+
+
 5️⃣ Open in browser
 http://127.0.0.1:5000/
+
+
 📊 Project Structure
 ├── app.py
 ├── detection.py
@@ -81,6 +87,8 @@ http://127.0.0.1:5000/
 │   ├── members.html
 ├── static/
 ├── README.md
+
+
 🔄 How It Works
 Camera captures live video
 AI model processes frames
@@ -89,30 +97,34 @@ Alert is stored in database
 Data is sent to frontend
 Dashboard displays alerts
 Map shows threat location 📍
+
+
 🗺️ Map Integration
 Implemented using Leaflet.js
 Uses OpenStreetMap (free, no API key required)
 Displays real-time alert locations
 Auto-refresh every 5 seconds
-📸 Screenshots
 
-(Add your project screenshots here)
 
 🎯 Advantages
-Real-time monitoring
-Low cost (no paid APIs)
-Easy to deploy
-Scalable system
+- Real-time monitoring
+- Low cost (no paid APIs)
+- Easy to deploy
+- Scalable system
+
+
 🔮 Future Scope
-📍 Live GPS tracking
-📱 SMS alerts using Twilio
-📊 Heatmap for crime analysis
-📲 Mobile application
-🤖 Advanced AI models
+- Live GPS tracking
+- SMS alerts using Twilio
+- Heatmap for crime analysis
+- Mobile application
+- Advanced AI models
+
+
 👩‍💻 Author
 
 Navjot Kaur
-BCA Graduate | Aspiring ML Engineer
+Aspiring ML Engineer
 
 📜 License
 
