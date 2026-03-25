@@ -25,9 +25,8 @@ This project aims to enhance personal safety by using Artificial Intelligence an
 
 - Python  
 - Flask  
-- OpenCV  
-- Machine Learning (Scikit-learn / TensorFlow / Keras)  
-- MySQL / SQLite  
+- Deep Learning (CNN Model)  
+- MySQL 
 - HTML, CSS, JavaScript  
 - Leaflet.js  
 - OpenStreetMap  
